@@ -49,25 +49,25 @@ const MAX_METHANE = 400;
 // DMI = 2.5% of body weight.
 function calcMethaneDMI(seratIds: string[], patiIds: string[], ratio: number, boosterId: string | null, bodyWeightKg: number, baseline: number, averageGHSI: number): { methane: number; dmi: number } {
   const dmi = bodyWeightKg * 0.025;
-  
+
   if (seratIds.length === 0 || patiIds.length === 0) return { methane: 0, dmi };
 
   const serats = SERAT_OPTIONS.filter(s => seratIds.includes(s.id));
   const patis = PATI_OPTIONS.filter(p => patiIds.includes(p.id));
-  
+
   const avgSeratIpm = serats.reduce((sum, s) => sum + s.ipm, 0) / serats.length;
   const avgPatiIpm = patis.reduce((sum, p) => sum + p.ipm, 0) / patis.length;
-  
+
   const ipmGabungan = avgSeratIpm * (ratio / 100) + avgPatiIpm * ((100 - ratio) / 100);
-  
+
   // Faktor_ruminasi berdasarkan GHSI (kesehatan sapi). Sapi sehat (GHSI tinggi) -> Faktor mendekati 1.0
-  const faktorRuminasi = Math.max(0.5, averageGHSI / 100); 
-  
+  const faktorRuminasi = Math.max(0.5, averageGHSI / 100);
+
   const booster = boosterId ? ECO_BOOSTERS.find(b => b.id === boosterId) : null;
-  
+
   let m = dmi * baseline * ipmGabungan * faktorRuminasi;
   if (booster) m *= (1 - booster.reduction);
-  
+
   return { methane: Math.round(Math.min(MAX_METHANE, Math.max(0, m))), dmi: parseFloat(dmi.toFixed(1)) };
 }
 
@@ -110,7 +110,7 @@ function generateAIRecommendation(
 
   const serats = SERAT_OPTIONS.filter(s => seratIds.includes(s.id));
   const avgSeratIpm = serats.reduce((sum, s) => sum + s.ipm, 0) / serats.length;
-  
+
   const hasBooster = boosterId !== null;
   const highFiberRatio = ratio > 65;
   const lowPatiRatio = 100 - ratio < 35;
@@ -143,8 +143,8 @@ function generateAIRecommendation(
       detail = `Porsi ${seratLabel} cukup tinggi (${ratio}%). Geser rasio konsentrat ke 55% agar propionat meningkat.`;
       potentialReduction = 18;
     } else if (isHighIpm) {
-       detail = `Bahan ${seratLabel} (Rata-rata IPM ${avgSeratIpm.toFixed(2)}) bisa diganti dengan alternatif IPM lebih rendah.`;
-       potentialReduction = 15;
+      detail = `Bahan ${seratLabel} (Rata-rata IPM ${avgSeratIpm.toFixed(2)}) bisa diganti dengan alternatif IPM lebih rendah.`;
+      potentialReduction = 15;
     } else {
       detail = `Komposisi seimbang tapi emisi masih di zona kuning (${methane}g/hari).`;
       potentialReduction = 12;
@@ -201,18 +201,19 @@ export function EcoNutrition() {
 
   const hasInput = seratIds.length > 0 && patiIds.length > 0;
   const currentRel = batches[Math.min(relIdx, batches.length - 1)];
-  
+
   const averageGHSI = useMemo(() => {
     if (!currentRel || currentRel.cattle.length === 0) return 100;
     return currentRel.cattle.reduce((sum, c) => sum + (c.health_score ?? 100), 0) / currentRel.cattle.length;
   }, [currentRel]);
 
-  const rawBreedName = currentRel?.cattle[0]?.breed || 'Brahman Cross';
+  const selectedCattleObj = currentRel?.cattle.find(c => c.id === selectedCattleId) || currentRel?.cattle[0];
+  const rawBreedName = selectedCattleObj?.breed || 'Brahman Cross';
   const autoBreedStr = rawBreedName.toLowerCase();
-  const autoBreed = autoBreedStr.includes('perah') || autoBreedStr.includes('holstein') || autoBreedStr.includes('impor') 
-    ? BREED_OPTIONS[0] 
-    : autoBreedStr.includes('bali') || autoBreedStr.includes('po') || autoBreedStr.includes('madura') 
-      ? BREED_OPTIONS[2] 
+  const autoBreed = autoBreedStr.includes('perah') || autoBreedStr.includes('holstein') || autoBreedStr.includes('impor')
+    ? BREED_OPTIONS[0]
+    : autoBreedStr.includes('bali') || autoBreedStr.includes('po') || autoBreedStr.includes('madura')
+      ? BREED_OPTIONS[2]
       : BREED_OPTIONS[1]; // default pedaging
 
   const { methane, dmi } = useMemo(() =>
@@ -304,26 +305,25 @@ export function EcoNutrition() {
               <div className="p-2 bg-rs-primary/10 rounded-xl"><Leaf className="w-4 h-4 text-rs-primary" /></div>
               <div>
                 <h2 className="text-sm sm:text-base font-bold text-rs-text">Pilih Bahan Baku Pakan</h2>
-                <p className="text-xs text-rs-muted">Input kosong = speedometer tetap 0. Isi untuk menghitung emisi.</p>
+                <p className="text-xs text-rs-muted">Isi untuk menghitung emisi.</p>
               </div>
             </div>
           </div>
           <div className="p-4 sm:p-5 space-y-4">
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🐄 Ras Sapi (Otomatis dari Data Sistem)</label>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🐄 Ras Sapi</label>
               <div className="w-full px-3 py-2.5 bg-[#f4f5f2] border-2 border-rs-border rounded-xl text-rs-text text-sm font-medium flex items-center">
                 <span className="truncate">{rawBreedName}</span>
                 <span className="ml-auto text-xs text-rs-muted bg-white px-2 py-0.5 rounded-md border shadow-sm">Baseline: {autoBreed.baseline}g</span>
               </div>
             </div>
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🌾 Sumber Serat Kasar (Multi-pilih)</label>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🌾 Sumber Hijauan (Multi-pilih)</label>
               <div className="flex flex-wrap gap-2">
                 {SERAT_OPTIONS.map(s => (
                   <button key={s.id} onClick={() => setSeratIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id])}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                      seratIds.includes(s.id) ? 'bg-rs-primary text-white border-rs-primary' : 'bg-rs-card-sub text-rs-text border-rs-border hover:border-rs-primary/50'
-                    }`}>
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${seratIds.includes(s.id) ? 'bg-rs-primary text-white border-rs-primary' : 'bg-rs-card-sub text-rs-text border-rs-border hover:border-rs-primary/50'
+                      }`}>
                     {s.label}
                   </button>
                 ))}
@@ -334,9 +334,8 @@ export function EcoNutrition() {
               <div className="flex flex-wrap gap-2">
                 {PATI_OPTIONS.map(p => (
                   <button key={p.id} onClick={() => setPatiIds(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                      patiIds.includes(p.id) ? 'bg-rs-primary text-white border-rs-primary' : 'bg-rs-card-sub text-rs-text border-rs-border hover:border-rs-primary/50'
-                    }`}>
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${patiIds.includes(p.id) ? 'bg-rs-primary text-white border-rs-primary' : 'bg-rs-card-sub text-rs-text border-rs-border hover:border-rs-primary/50'
+                      }`}>
                     {p.label}
                   </button>
                 ))}
@@ -369,7 +368,7 @@ export function EcoNutrition() {
               <div className="p-2 bg-rs-primary/10 rounded-xl"><Flame className="w-4 h-4 text-rs-primary" /></div>
               <div>
                 <h2 className="text-sm sm:text-base font-bold text-rs-text">Monitor Emisi Metana (DMI)</h2>
-                <p className="text-xs text-rs-muted">CH₄ = DMI × Baseline × IPM_gabungan × Faktor_ruminasi</p>
+                <p className="text-xs text-rs-muted">CH₄ = DMI × Baseline × IPM gabungan × Faktor ruminasi</p>
               </div>
             </div>
           </div>
