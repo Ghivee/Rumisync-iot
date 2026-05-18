@@ -126,30 +126,30 @@ function generateAIRecommendation(
   if (zone.zone === 'red') {
     headline = `🔴 Zona Merah — Perlu Optimasi Segera`;
     if (highFiberRatio) {
-      detail = `Porsi ${seratLabel} cukup tinggi (${ratio}%). Geser rasio pati ke ${Math.min(ratio - 10, 55)}% agar propionat meningkat.`;
+      detail = `Porsi ${seratLabel} cukup tinggi (${ratio}%). Geser rasio konsentrat ke ${Math.min(ratio - 10, 55)}% agar propionat meningkat.`;
       potentialReduction = 15;
     } else if (isHighIpm) {
-      detail = `Bahan ${seratLabel} memiliki potensi metana tinggi (Rata-rata IPM ${avgSeratIpm.toFixed(2)}). Pertimbangkan ganti ke sumber berserat dengan IPM lebih rendah seperti Lamtoro.`;
+      detail = `Bahan ${seratLabel} memiliki potensi metana tinggi (Rata-rata IPM ${avgSeratIpm.toFixed(2)}). Pertimbangkan ganti ke sumber hijauan dengan IPM lebih rendah seperti Lamtoro.`;
       potentialReduction = 20;
     } else {
       detail = `Emisi ${methane}g/hari melebihi batas aman.`;
       potentialReduction = 18;
     }
-    action = 'Eco-Booster direkomendasikan untuk mendorong ke Zona Hijau.';
+    action = hasBooster ? 'Eco-Booster sudah maksimal, pertimbangkan mengubah takaran atau jenis pakan secara drastis.' : 'Eco-Booster direkomendasikan untuk menurunkan emisi secara cepat.';
     boosterSuggestion = hasBooster ? null : 'bawang_putih';
   } else if (zone.zone === 'yellow') {
     headline = `⚠️ Zona Kuning — Perlu Optimasi`;
     if (highFiberRatio || lowPatiRatio) {
-      detail = `Porsi ${seratLabel} cukup tinggi (${ratio}%). Geser rasio pati ke 55% agar propionat meningkat.`;
+      detail = `Porsi ${seratLabel} cukup tinggi (${ratio}%). Geser rasio konsentrat ke 55% agar propionat meningkat.`;
       potentialReduction = 18;
     } else if (isHighIpm) {
        detail = `Bahan ${seratLabel} (Rata-rata IPM ${avgSeratIpm.toFixed(2)}) bisa diganti dengan alternatif IPM lebih rendah.`;
        potentialReduction = 15;
     } else {
-      detail = `Komposisi seimbang tapi emisi masih di zona kuning (${methane}g/hari). Optimalkan dengan Eco-Booster.`;
+      detail = `Komposisi seimbang tapi emisi masih di zona kuning (${methane}g/hari).`;
       potentialReduction = 12;
     }
-    action = hasBooster ? 'Pertahankan Eco-Booster dan monitor emisi.' : 'Tambahkan Eco-Booster Minyak Bawang Putih atau Peppermint untuk hasil terbaik.';
+    action = hasBooster ? 'Pertahankan Eco-Booster dan sesuaikan takaran pakan sedikit lagi.' : 'Tambahkan Eco-Booster Minyak Bawang Putih atau Peppermint untuk hasil terbaik.';
     boosterSuggestion = hasBooster ? null : 'peppermint';
   } else {
     headline = `✅ Zona Hijau — Formulasi Optimal`;
@@ -207,7 +207,8 @@ export function EcoNutrition() {
     return currentRel.cattle.reduce((sum, c) => sum + (c.health_score ?? 100), 0) / currentRel.cattle.length;
   }, [currentRel]);
 
-  const autoBreedStr = currentRel?.cattle[0]?.breed?.toLowerCase() || '';
+  const rawBreedName = currentRel?.cattle[0]?.breed || 'Brahman Cross';
+  const autoBreedStr = rawBreedName.toLowerCase();
   const autoBreed = autoBreedStr.includes('perah') || autoBreedStr.includes('holstein') || autoBreedStr.includes('impor') 
     ? BREED_OPTIONS[0] 
     : autoBreedStr.includes('bali') || autoBreedStr.includes('po') || autoBreedStr.includes('madura') 
@@ -311,7 +312,7 @@ export function EcoNutrition() {
             <div>
               <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🐄 Ras Sapi (Otomatis dari Data Sistem)</label>
               <div className="w-full px-3 py-2.5 bg-[#f4f5f2] border-2 border-rs-border rounded-xl text-rs-text text-sm font-medium flex items-center">
-                <span className="truncate">{autoBreed.label}</span>
+                <span className="truncate">{rawBreedName}</span>
                 <span className="ml-auto text-xs text-rs-muted bg-white px-2 py-0.5 rounded-md border shadow-sm">Baseline: {autoBreed.baseline}g</span>
               </div>
             </div>
@@ -329,7 +330,7 @@ export function EcoNutrition() {
               </div>
             </div>
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🌽 Sumber Pati (Multi-pilih)</label>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🌽 Sumber Konsentrat (Multi-pilih)</label>
               <div className="flex flex-wrap gap-2">
                 {PATI_OPTIONS.map(p => (
                   <button key={p.id} onClick={() => setPatiIds(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])}
@@ -349,10 +350,10 @@ export function EcoNutrition() {
               <p className="text-[10px] text-rs-muted mt-1">DMI = 2.5% × berat badan = {(bodyWeight * 0.025).toFixed(1)} kg/hari</p>
             </div>
             <div>
-              <div className="text-xs font-bold text-rs-text mb-2">⚖️ Rasio Serat vs Pati</div>
+              <div className="text-xs font-bold text-rs-text mb-2">⚖️ Rasio Hijauan vs Konsentrat</div>
               <div className="flex items-center justify-between text-xs font-bold mb-2">
-                <span className="px-2 py-1 rounded-lg bg-orange-50 border border-orange-200 text-orange-700">🌾 Serat {ratio}%</span>
-                <span className="px-2 py-1 rounded-lg bg-[#e2f0ea] border border-[#c1d1c8] text-[#4c7766]">🌽 Pati {100 - ratio}%</span>
+                <span className="px-2 py-1 rounded-lg bg-orange-50 border border-orange-200 text-orange-700">🌾 Hijauan {ratio}%</span>
+                <span className="px-2 py-1 rounded-lg bg-[#e2f0ea] border border-[#c1d1c8] text-[#4c7766]">🌽 Konsentrat {100 - ratio}%</span>
               </div>
               <input type="range" min={10} max={90} value={ratio} onChange={e => setRatio(Number(e.target.value))}
                 className="w-full h-3 rounded-full cursor-pointer"
