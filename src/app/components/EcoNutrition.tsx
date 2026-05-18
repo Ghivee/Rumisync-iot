@@ -140,7 +140,7 @@ function generateAIRecommendation(
   } else if (zone.zone === 'yellow') {
     headline = `⚠️ Zona Kuning — Perlu Optimasi`;
     if (highFiberRatio || lowPatiRatio) {
-      detail = `Porsi ${serat?.label ?? 'Serat'} cukup tinggi (${ratio}%). Geser rasio pati ke 55% agar propionat meningkat.`;
+      detail = `Porsi ${seratLabel} cukup tinggi (${ratio}%). Geser rasio pati ke 55% agar propionat meningkat.`;
       potentialReduction = 18;
     } else if (isHighIpm) {
        detail = `Bahan ${seratLabel} (Rata-rata IPM ${avgSeratIpm.toFixed(2)}) bisa diganti dengan alternatif IPM lebih rendah.`;
@@ -197,7 +197,6 @@ export function EcoNutrition() {
   const [ratio, setRatio] = useState(60);
   const [boosterId, setBoosterId] = useState<string | null>(null);
   const [bodyWeight, setBodyWeight] = useState(400);
-  const [selectedBreedId, setSelectedBreedId] = useState('pedaging'); // default
   const [isSaving, setIsSaving] = useState(false);
 
   const hasInput = seratIds.length > 0 && patiIds.length > 0;
@@ -208,11 +207,16 @@ export function EcoNutrition() {
     return currentRel.cattle.reduce((sum, c) => sum + (c.health_score ?? 100), 0) / currentRel.cattle.length;
   }, [currentRel]);
 
-  const selectedBreed = BREED_OPTIONS.find(b => b.id === selectedBreedId) || BREED_OPTIONS[1];
+  const autoBreedStr = currentRel?.cattle[0]?.breed?.toLowerCase() || '';
+  const autoBreed = autoBreedStr.includes('perah') || autoBreedStr.includes('holstein') || autoBreedStr.includes('impor') 
+    ? BREED_OPTIONS[0] 
+    : autoBreedStr.includes('bali') || autoBreedStr.includes('po') || autoBreedStr.includes('madura') 
+      ? BREED_OPTIONS[2] 
+      : BREED_OPTIONS[1]; // default pedaging
 
   const { methane, dmi } = useMemo(() =>
-    hasInput ? calcMethaneDMI(seratIds, patiIds, ratio, boosterId, bodyWeight, selectedBreed.baseline, averageGHSI) : { methane: 0, dmi: 0 },
-    [seratIds, patiIds, ratio, boosterId, bodyWeight, selectedBreed, averageGHSI, hasInput]
+    hasInput ? calcMethaneDMI(seratIds, patiIds, ratio, boosterId, bodyWeight, autoBreed.baseline, averageGHSI) : { methane: 0, dmi: 0 },
+    [seratIds, patiIds, ratio, boosterId, bodyWeight, autoBreed, averageGHSI, hasInput]
   );
   const zone = getMethaneZone(methane);
   const rotation = needleRotation(methane);
@@ -305,11 +309,11 @@ export function EcoNutrition() {
           </div>
           <div className="p-4 sm:p-5 space-y-4">
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🐄 Ras Sapi</label>
-              <select value={selectedBreedId} onChange={e => setSelectedBreedId(e.target.value)}
-                className="w-full px-3 py-2.5 min-h-[44px] bg-rs-card-sub border-2 border-rs-border rounded-xl focus:outline-none focus:border-rs-primary transition-all text-rs-text text-sm appearance-none">
-                {BREED_OPTIONS.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
-              </select>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🐄 Ras Sapi (Otomatis dari Data Sistem)</label>
+              <div className="w-full px-3 py-2.5 bg-[#f4f5f2] border-2 border-rs-border rounded-xl text-rs-text text-sm font-medium flex items-center">
+                <span className="truncate">{autoBreed.label}</span>
+                <span className="ml-auto text-xs text-rs-muted bg-white px-2 py-0.5 rounded-md border shadow-sm">Baseline: {autoBreed.baseline}g</span>
+              </div>
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-xs font-bold text-rs-text mb-2">🌾 Sumber Serat Kasar (Multi-pilih)</label>
